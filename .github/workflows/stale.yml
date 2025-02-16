@@ -1,0 +1,69 @@
+# This workflow warns and then closes issues and PRs that have had no activity for a specified amount of time.
+#
+# You can adjust the behavior by modifying this file.
+# For more information, see:
+# https://github.com/actions/stale
+name: Mark stale issues and pull requests and cancel empty PRs
+
+on:
+  schedule:
+    - cron: '21 21 * * *'
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: 'Stale issue message'
+          stale-pr-message: 'Stale pull request message'
+          stale-issue-label: 'no-issue-activity'
+          stale-pr-label: 'no-pr-activity'
+  
+  cancel-empty-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Cancel PRs without proper description
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Fetch all open pull requests in the repository.
+            const prs = await github.paginate("GET /repos/{owner}/{repo}/pulls", {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open"
+            });
+            
+            for (const pr of prs) {
+              // If the pull request description is empty or contains only whitespace,
+              // consider it as lacking proper comments.
+              if (!pr.body || pr.body.trim().length === 0) {
+                console.log(`PR #${pr.number} by ${pr.user.login} has an empty description.`);
+                
+                // Post a comment to inform the user.
+                await github.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: `@${pr.user.login}, your pull request has been closed because it does not include a description explaining the purpose of the PR. Please update your PR with the necessary details and reopen it.`
+                });
+                
+                // Close the pull request.
+                await github.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  state: "closed"
+                });
+                
+                console.log(`PR #${pr.number} closed.`);
+              }
+            }
