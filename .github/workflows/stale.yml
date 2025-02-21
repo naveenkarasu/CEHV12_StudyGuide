@@ -36,7 +36,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             // Fetch all open pull requests in the repository.
-            const prs = await github.paginate("GET /repos/{owner}/{repo}/pulls", {
+            const prs = await github.paginate(github.rest.pulls.list, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "open"
@@ -57,7 +57,7 @@ jobs:
                 });
                 
                 // Close the pull request.
-                await github.pulls.update({
+                await github.rest.pulls.update({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   pull_number: pr.number,
