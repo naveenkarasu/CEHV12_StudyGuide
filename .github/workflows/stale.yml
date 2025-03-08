@@ -3,11 +3,13 @@
 # You can adjust the behavior by modifying this file.
 # For more information, see:
 # https://github.com/actions/stale
+
 name: Mark stale issues and pull requests and cancel empty PRs
 
 on:
   schedule:
     - cron: '21 21 * * *'
+  workflow_dispatch:
 
 jobs:
   stale:
@@ -49,7 +51,7 @@ jobs:
                 console.log(`PR #${pr.number} by ${pr.user.login} has an empty description.`);
                 
                 // Post a comment to inform the user.
-                await github.issues.createComment({
+                await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: pr.number,
