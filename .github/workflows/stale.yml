@@ -1,9 +1,3 @@
-# This workflow warns and then closes issues and PRs that have had no activity for a specified amount of time.
-#
-# You can adjust the behavior by modifying this file.
-# For more information, see:
-# https://github.com/actions/stale
-
 name: Mark stale issues and pull requests and cancel empty PRs
 
 on:
@@ -44,19 +38,30 @@ jobs:
               state: "open"
             });
             
+            // Check for no open PRs.
+            if (!prs || prs.length === 0) {
+              console.log("No open pull requests found.");
+              return;
+            }
+            
             for (const pr of prs) {
               // If the pull request description is empty or contains only whitespace,
-              // consider it as lacking proper comments.
+              // consider it as lacking proper details.
               if (!pr.body || pr.body.trim().length === 0) {
-                console.log(`PR #${pr.number} by ${pr.user.login} has an empty description.`);
+                const username = pr.user && pr.user.login ? pr.user.login : "unknown user";
+                console.log(`PR #${pr.number} by ${username} has an empty description.`);
                 
-                // Post a comment to inform the user.
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number,
-                  body: `@${pr.user.login}, your pull request has been closed because it does not include a description explaining the purpose of the PR. Please update your PR with the necessary details and reopen it.`
-                });
+                // Post a comment to inform the user if user information exists.
+                if (pr.user && pr.user.login) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    body: `@${pr.user.login}, your pull request has been closed because it does not include a description explaining the purpose of the PR. Please update your PR with the necessary details and reopen it.`
+                  });
+                } else {
+                  console.log(`PR #${pr.number} has no valid user information, skipping comment.`);
+                }
                 
                 // Close the pull request.
                 await github.rest.pulls.update({
